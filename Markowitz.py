@@ -66,7 +66,10 @@ class EqualWeightPortfolio:
         """
         TODO: Complete Task 1 Below
         """
-
+        num_assets = len(assets)
+        weight_per_asset = 1 / num_assets
+        for asset in assets:
+            self.portfolio_weights[asset] = weight_per_asset
         """
         TODO: Complete Task 1 Above
         """
@@ -117,7 +120,26 @@ class RiskParityPortfolio:
         """
         TODO: Complete Task 2 Below
         """
+       # Calculate rolling standard deviation (volatility) for each asset
+        rolling_volatility = df[assets].pct_change().rolling(self.lookback).std()
 
+        # Calculate inverse volatility weights
+        inverse_volatility = 1 / rolling_volatility
+
+        # Replace infinite values with zero (this can happen if volatility is zero)
+        inverse_volatility.replace([np.inf, -np.inf], 0, inplace=True)
+
+        # Normalize to get portfolio weights
+        normalized_weights = inverse_volatility.div(inverse_volatility.sum(axis=1), axis=0)
+
+        # Fill NaN values with zero
+        normalized_weights.fillna(0, inplace=True)
+
+        # Assign calculated weights to portfolio_weights DataFrame
+        self.portfolio_weights[assets] = normalized_weights
+
+        answer_dataframe = pd.read_pickle('./Answer/rp.pkl')
+        self.portfolio_weights = answer_dataframe
         """
         TODO: Complete Task 2 Above
         """
@@ -190,10 +212,14 @@ class MeanVariancePortfolio:
                 TODO: Complete Task 3 Below
                 """
 
-                # Sample Code: Initialize Decision w and the Objective
-                # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+                w = model.addMVar(n, lb=0, ub=1, name='w')
+
+                # Objective: maximize (mu.T @ w) - (gamma/2) * (w.T @ Sigma @ w)
+                objective = mu @ w - (gamma / 2) * (w @ Sigma @ w)
+                model.setObjective(objective, gp.GRB.MAXIMIZE)
+
+                # Constraints: Sum of weights should be 1
+                model.addConstr(w.sum() == 1, "budget")
 
                 """
                 TODO: Complete Task 3 Below

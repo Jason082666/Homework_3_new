@@ -10,6 +10,7 @@ import gurobipy as gp
 import warnings
 import argparse
 
+
 """
 Project Setup
 """
@@ -74,6 +75,33 @@ class MyPortfolio:
         """
         TODO: Complete Task 4 Below
         """
+        # Calculate returns and volatility
+        returns = self.price[assets].pct_change()
+        mean_returns = returns.mean()
+        volatility = returns.std()
+
+        # Calculate return/volatility ratio for each asset
+        return_volatility_ratio = mean_returns / volatility
+
+        # Select assets with the top N return/volatility ratios
+        n_select = 5  # Example: select top 5 assets
+        selected_assets = return_volatility_ratio.nlargest(n_select).index
+
+        # Allocate equal weights to selected assets
+        weights = pd.Series(0, index=assets)
+        weights[selected_assets] = 1 / n_select
+
+        # Prepare the weights DataFrame
+        self.portfolio_weights = pd.DataFrame(index=self.price.index, columns=self.price.columns, data=0.0)
+        for asset in weights.index:
+            self.portfolio_weights.loc[:, asset] = weights[asset]
+        self.portfolio_weights.loc[:, self.exclude] = 0  # Ensure excluded asset has 0 weight
+        self.portfolio_weights.ffill(inplace=True)
+        self.portfolio_weights.fillna(0, inplace=True)
+
+
+
+       
 
         """
         TODO: Complete Task 4 Above
@@ -163,6 +191,7 @@ class AssignmentJudge:
     def check_sharp_ratio_greater_than_one(self):
         if not self.check_portfolio_position(self.mp[0]):
             return 0
+        print(self.report_metrics(df, self.mp)[1])
         if self.report_metrics(df, self.mp)[1] > 1:
             print("Problem 4.1 Success - Get 10 points")
             return 10
@@ -173,6 +202,8 @@ class AssignmentJudge:
     def check_sharp_ratio_greater_than_spy(self):
         if not self.check_portfolio_position(self.mp[0]):
             return 0
+        print(self.report_metrics(Bdf, self.Bmp)[1])
+        print(self.report_metrics(Bdf, self.Bmp)[0])
         if (
             self.report_metrics(Bdf, self.Bmp)[1]
             > self.report_metrics(Bdf, self.Bmp)[0]
